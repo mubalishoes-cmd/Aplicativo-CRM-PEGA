@@ -4,7 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, Search, Bell, Truck, Plane, Phone, Mail,
   MessageCircle, Calendar, MapPin, Building2, ChevronRight, X, Plus, AlertTriangle,
   TrendingUp, Clock, CheckCircle2, ArrowLeft, Filter, User, Briefcase, LogOut,
-  Download, Loader2
+  Download, Loader2, Trash2
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import * as XLSX from 'xlsx';
@@ -240,6 +240,13 @@ function CRMDashboard({ session }) {
     setClients(prev => prev.some(c => c.id === data.id) ? prev : [...prev, rowToClient(data)]);
     return data.id;
   }
+  async function deleteClient(id) {
+    const anterior = clients;
+    setClients(prev => prev.filter(c => c.id !== id));
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) { console.error('Falha ao excluir:', error.message); setClients(anterior); return false; }
+    return true;
+  }
   function openClient(id) { setSelectedId(id); setView('detalhe'); }
 
   const kpis = useMemo(() => {
@@ -372,7 +379,7 @@ function CRMDashboard({ session }) {
             {view === 'dashboard' && <Dashboard kpis={kpis} segChartData={segChartData} stageChartData={stageChartData} vendedorData={vendedorData} alerts={alerts} openClient={openClient} setView={setView} />}
             {view === 'funil' && <Funil clients={filtered} updateClient={updateClient} openClient={openClient} search={search} setSearch={setSearch} />}
             {view === 'clientes' && <ClienteLista clients={filtered} openClient={openClient} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterSegmento={filterSegmento} setFilterSegmento={setFilterSegmento} segmentos={segmentos} total={clients.length} addClient={addClient} />}
-            {view === 'detalhe' && selected && <ClienteDetalhe client={selected} updateClient={updateClient} addTimelineEntry={addTimelineEntry} setView={setView} />}
+            {view === 'detalhe' && selected && <ClienteDetalhe client={selected} updateClient={updateClient} addTimelineEntry={addTimelineEntry} setView={setView} deleteClient={deleteClient} />}
             {view === 'followup' && <FollowUp alerts={alerts} openClient={openClient} clients={clients} />}
           </div>
         </main>
@@ -621,17 +628,47 @@ function Field({ label, value, onChange, type = 'text' }) {
   );
 }
 
-function ClienteDetalhe({ client, updateClient, addTimelineEntry, setView }) {
+function ClienteDetalhe({ client, updateClient, addTimelineEntry, setView, deleteClient }) {
   const [novaNota, setNovaNota] = useState('');
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const stg = stageOf(client.etapa);
   const sortedTimeline = [...client.timeline].sort((a,b) => (b.data||'').localeCompare(a.data||''));
   const stageIdx = STAGES.findIndex(s => s.key === client.etapa);
 
+  async function handleExcluir() {
+    setExcluindo(true);
+    const ok = await deleteClient(client.id);
+    setExcluindo(false);
+    if (ok) setView('clientes');
+  }
+
   return (
     <div>
-      <button onClick={() => setView('clientes')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#2E5EAA', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', marginBottom: 14, padding: 0 }}>
-        <ArrowLeft size={14} /> Voltar para clientes
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <button onClick={() => setView('clientes')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#2E5EAA', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+          <ArrowLeft size={14} /> Voltar para clientes
+        </button>
+
+        {!confirmandoExclusao ? (
+          <button onClick={() => setConfirmandoExclusao(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid #E5E7EB', color: '#B0463C', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '6px 10px', borderRadius: 7 }}>
+            <Trash2 size={13} /> Excluir cadastro
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ color: '#B0463C', fontWeight: 600 }}>Excluir "{client.empresa}" permanentemente?</span>
+            <button onClick={handleExcluir} disabled={excluindo}
+              style={{ background: '#B0463C', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', fontWeight: 700, cursor: 'pointer' }}>
+              {excluindo ? 'Excluindo...' : 'Sim, excluir'}
+            </button>
+            <button onClick={() => setConfirmandoExclusao(false)}
+              style={{ background: 'none', border: '1px solid #E5E7EB', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>
+              Cancelar
+            </button>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
         <div>
