@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   LayoutDashboard, GitBranch, Users, Search, Bell, Truck, X, AlertTriangle,
   User, LogOut, Download,
@@ -6,8 +6,9 @@ import {
 import { supabase, supabaseConfigured } from './lib/supabaseClient';
 import { STAGES } from './lib/constants';
 import { lastContactDate, daysSince } from './lib/format';
-import { rowToClient, patchToRow } from './lib/mappers';
 import { exportClientsToExcel } from './lib/exportExcel';
+import { useAuth } from './hooks/useAuth';
+import { useClients } from './hooks/useClients';
 import LoadingScreen from './components/LoadingScreen';
 import LoginScreen from './components/LoginScreen';
 import ConfigMissingScreen from './components/ConfigMissingScreen';
@@ -18,15 +19,7 @@ import ClienteDetalhe from './components/ClienteDetalhe';
 import FollowUp from './components/FollowUp';
 
 export default function CRMApp() {
-  const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  useEffect(() => {
-    if (!supabaseConfigured) { setAuthLoading(false); return; }
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthLoading(false); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const { session, authLoading } = useAuth();
 
   if (!supabaseConfigured) return <ConfigMissingScreen />;
   if (authLoading) return <LoadingScreen label="Verificando login..." />;
@@ -35,46 +28,19 @@ export default function CRMApp() {
 }
 
 function CRMDashboard({ session }) {
-  const [clients, setClients] = useState([]);
-  const [loadingClients, setLoadingClients] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    supabase.from('clients').select('*').order('id').then(({ data, error }) => {
-      if (!active) return;
-      if (!error && data) setClients(data.map(rowToClient));
-      setLoadingClients(false);
-    });
-
-    // Mantém os dois logins sincronizados em tempo real
-    const channel = supabase.channel('clients-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setClients(prev => prev.some(c => c.id === payload.new.id) ? prev : [...prev, rowToClient(payload.new)]);
-        } else if (payload.eventType === 'UPDATE') {
-          setClients(prev => prev.map(c => c.id === payload.new.id ? rowToClient(payload.new) : c));
-        } else if (payload.eventType === 'DELETE') {
-          setClients(prev => prev.filter(c => c.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => { active = false; supabase.removeChannel(channel); };
-  }, []);
+  const {
+    clients, loading: loadingClients, errorMsg, clearError,
+    updateClient, addTimelineEntry, addClient, importClients, deleteClient,
+  } = useClients();
 
   const [view, setView] = useState('dashboard');
-  const [errorMsg, setErrorMsg] = useState(null);
-  function notifyError(msg) {
-    setErrorMsg(msg);
-    window.clearTimeout(notifyError._t);
-    notifyError._t = window.setTimeout(() => setErrorMsg(null), 6000);
-  }
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('Todos');
   const [filterSegmento, setFilterSegmento] = useState('Todos');
 
   const selected = clients.find(c => c.id === selectedId);
+  function openClient(id) { setSelectedId(id); setView('detalhe'); }
 
   const segmentos = useMemo(() => {
     const s = new Set(clients.map(c => c.segmento).filter(Boolean));
@@ -91,67 +57,6 @@ function CRMDashboard({ session }) {
       return matchesSearch && matchesStatus && matchesSeg;
     });
   }, [clients, search, filterStatus, filterSegmento]);
-
-  async function updateClient(id, patch) {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
-    const { error } = await supabase.from('clients').update(patchToRow(patch)).eq('id', id);
-    if (error) {
-      console.error('Falha ao salvar alteração:', error.message);
-      notifyError('Não foi possível salvar essa alteração. Verifique sua conexão e tente novamente.');
-    }
-  }
-  async function addTimelineEntry(id, nota) {
-    if (!nota.trim()) return;
-    const today = new Date().toISOString().slice(0,10);
-    const client = clients.find(c => c.id === id);
-    const novaTimeline = [...(client?.timeline || []), { data: today, nota }];
-    setClients(prev => prev.map(c => c.id === id ? { ...c, timeline: novaTimeline } : c));
-    const { error } = await supabase.from('clients').update({ timeline: novaTimeline }).eq('id', id);
-    if (error) {
-      console.error('Falha ao salvar interação:', error.message);
-      notifyError('Não foi possível salvar essa anotação. Verifique sua conexão e tente novamente.');
-    }
-  }
-  async function addClient(empresa) {
-    if (!empresa.trim()) return;
-    const row = {
-      empresa, razao_social: empresa, nome_fantasia: empresa, status: 'Prospect',
-      etapa: 'Lead', modal: 'Rodoviário', probabilidade: 30, valor_potencial: 0, timeline: [],
-    };
-    const { data, error } = await supabase.from('clients').insert(row).select().single();
-    if (error) {
-      console.error('Falha ao criar empresa:', error.message);
-      notifyError('Não foi possível cadastrar essa empresa. Verifique sua conexão e tente novamente.');
-      return;
-    }
-    setClients(prev => prev.some(c => c.id === data.id) ? prev : [...prev, rowToClient(data)]);
-    return data.id;
-  }
-  // Insere várias linhas de uma vez (usado na importação de planilha).
-  // Retorna { inserted, error }.
-  async function importClients(rows) {
-    if (!rows.length) return { inserted: 0, error: null };
-    const { data, error } = await supabase.from('clients').insert(rows).select();
-    if (error) {
-      console.error('Falha ao importar planilha:', error.message);
-      return { inserted: 0, error };
-    }
-    setClients(prev => [...prev, ...data.map(rowToClient)]);
-    return { inserted: data.length, error: null };
-  }
-  async function deleteClient(id) {
-    const anterior = clients;
-    setClients(prev => prev.filter(c => c.id !== id));
-    const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) {
-      console.error('Falha ao excluir:', error.message);
-      notifyError('Não foi possível excluir esse cadastro. Verifique sua conexão e tente novamente.');
-      setClients(anterior);
-      return false;
-    }
-    return true;
-  }
-  function openClient(id) { setSelectedId(id); setView('detalhe'); }
 
   const kpis = useMemo(() => {
     const ativos = clients.filter(c => c.status === 'Ativo').length;
@@ -297,7 +202,7 @@ function CRMDashboard({ session }) {
         }}>
           <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ flex: 1 }}>{errorMsg}</div>
-          <button onClick={() => setErrorMsg(null)}
+          <button onClick={clearError}
             style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, opacity: 0.8 }}>
             <X size={14} />
           </button>
