@@ -9,8 +9,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 // const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Variáveis de ambiente do Supabase não configuradas. Veja o guia de configuração.');
-}
+// true somente se as duas variáveis estiverem realmente definidas.
+// O App.jsx usa isso para mostrar uma tela explicativa em vez de travar com tela preta.
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey) : null;

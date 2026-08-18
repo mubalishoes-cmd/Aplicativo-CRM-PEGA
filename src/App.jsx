@@ -6,7 +6,7 @@ import {
   TrendingUp, Clock, CheckCircle2, ArrowLeft, Filter, User, Briefcase, LogOut,
   Download, Loader2, Trash2
 } from 'lucide-react';
-import { supabase } from './supabaseClient';
+import { supabase, supabaseConfigured } from './supabaseClient';
 import * as XLSX from 'xlsx';
 
 const STAGES = [
@@ -75,6 +75,31 @@ function patchToRow(patch) {
   const row = {};
   Object.entries(patch).forEach(([k, v]) => { if (FIELD_TO_COLUMN[k]) row[FIELD_TO_COLUMN[k]] = v; });
   return row;
+}
+
+function ConfigMissingScreen() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#101828', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 32, width: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertTriangle size={20} color="#B0463C" />
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Configuração ausente</div>
+        </div>
+        <div style={{ fontSize: 13, color: '#5B6472', lineHeight: 1.5 }}>
+          O app não conseguiu se conectar ao banco de dados porque as variáveis
+          <code style={{ background: '#F5F6F8', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>VITE_SUPABASE_URL</code>
+          e/ou
+          <code style={{ background: '#F5F6F8', padding: '1px 5px', borderRadius: 4, margin: '0 3px' }}>VITE_SUPABASE_ANON_KEY</code>
+          não foram encontradas.
+        </div>
+        <div style={{ fontSize: 13, color: '#5B6472', lineHeight: 1.5 }}>
+          Confira em <strong>Vercel → Settings → Environment Variables</strong> se elas estão cadastradas
+          com esses nomes exatos, com os valores corretos (copiados de Project Settings → API no Supabase),
+          e depois faça um <strong>Redeploy</strong>.
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function LoadingScreen({ label }) {
@@ -153,11 +178,13 @@ export default function CRMApp() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabaseConfigured) { setAuthLoading(false); return; }
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthLoading(false); });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  if (!supabaseConfigured) return <ConfigMissingScreen />;
   if (authLoading) return <LoadingScreen label="Verificando login..." />;
   if (!session) return <LoginScreen />;
   return <CRMDashboard session={session} />;
@@ -192,6 +219,12 @@ function CRMDashboard({ session }) {
   }, []);
 
   const [view, setView] = useState('dashboard');
+  const [errorMsg, setErrorMsg] = useState(null);
+  function notifyError(msg) {
+    setErrorMsg(msg);
+    window.clearTimeout(notifyError._t);
+    notifyError._t = window.setTimeout(() => setErrorMsg(null), 6000);
+  }
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('Todos');
@@ -218,7 +251,10 @@ function CRMDashboard({ session }) {
   async function updateClient(id, patch) {
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
     const { error } = await supabase.from('clients').update(patchToRow(patch)).eq('id', id);
-    if (error) console.error('Falha ao salvar alteração:', error.message);
+    if (error) {
+      console.error('Falha ao salvar alteração:', error.message);
+      notifyError('Não foi possível salvar essa alteração. Verifique sua conexão e tente novamente.');
+    }
   }
   async function addTimelineEntry(id, nota) {
     if (!nota.trim()) return;
@@ -227,7 +263,10 @@ function CRMDashboard({ session }) {
     const novaTimeline = [...(client?.timeline || []), { data: today, nota }];
     setClients(prev => prev.map(c => c.id === id ? { ...c, timeline: novaTimeline } : c));
     const { error } = await supabase.from('clients').update({ timeline: novaTimeline }).eq('id', id);
-    if (error) console.error('Falha ao salvar interação:', error.message);
+    if (error) {
+      console.error('Falha ao salvar interação:', error.message);
+      notifyError('Não foi possível salvar essa anotação. Verifique sua conexão e tente novamente.');
+    }
   }
   async function addClient(empresa) {
     if (!empresa.trim()) return;
@@ -236,7 +275,11 @@ function CRMDashboard({ session }) {
       etapa: 'Lead', modal: 'Rodoviário', probabilidade: 30, valor_potencial: 0, timeline: [],
     };
     const { data, error } = await supabase.from('clients').insert(row).select().single();
-    if (error) { console.error('Falha ao criar empresa:', error.message); return; }
+    if (error) {
+      console.error('Falha ao criar empresa:', error.message);
+      notifyError('Não foi possível cadastrar essa empresa. Verifique sua conexão e tente novamente.');
+      return;
+    }
     setClients(prev => prev.some(c => c.id === data.id) ? prev : [...prev, rowToClient(data)]);
     return data.id;
   }
@@ -244,7 +287,12 @@ function CRMDashboard({ session }) {
     const anterior = clients;
     setClients(prev => prev.filter(c => c.id !== id));
     const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) { console.error('Falha ao excluir:', error.message); setClients(anterior); return false; }
+    if (error) {
+      console.error('Falha ao excluir:', error.message);
+      notifyError('Não foi possível excluir esse cadastro. Verifique sua conexão e tente novamente.');
+      setClients(anterior);
+      return false;
+    }
     return true;
   }
   function openClient(id) { setSelectedId(id); setView('detalhe'); }
@@ -384,6 +432,21 @@ function CRMDashboard({ session }) {
           </div>
         </main>
       </div>
+
+      {errorMsg && (
+        <div style={{
+          position: 'fixed', bottom: 20, right: 20, background: '#B0463C', color: '#fff',
+          padding: '12px 16px', borderRadius: 9, fontSize: 13, maxWidth: 340,
+          boxShadow: '0 6px 18px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'flex-start', gap: 10, zIndex: 999,
+        }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1 }}>{errorMsg}</div>
+          <button onClick={() => setErrorMsg(null)}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, opacity: 0.8 }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
