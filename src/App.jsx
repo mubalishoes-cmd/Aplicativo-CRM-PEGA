@@ -4,7 +4,7 @@ import {
   LayoutDashboard, GitBranch, Users, Search, Bell, Truck, Plane, Phone, Mail,
   MessageCircle, Calendar, MapPin, Building2, ChevronRight, X, Plus, AlertTriangle,
   TrendingUp, Clock, CheckCircle2, ArrowLeft, Filter, User, Briefcase, LogOut,
-  Download, Loader2, Trash2
+  Download, Loader2, Trash2, Upload
 } from 'lucide-react';
 import { supabase, supabaseConfigured } from './supabaseClient';
 import * as XLSX from 'xlsx';
@@ -75,6 +75,47 @@ function patchToRow(patch) {
   const row = {};
   Object.entries(patch).forEach(([k, v]) => { if (FIELD_TO_COLUMN[k]) row[FIELD_TO_COLUMN[k]] = v; });
   return row;
+}
+
+// --- Importação de planilha (Excel/CSV) ---
+function normalizeHeader(s) {
+  return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Converte uma linha da planilha (objeto com cabeçalhos originais) para uma linha da tabela `clients`.
+// Retorna null se a linha não tiver ao menos o nome da empresa.
+function mapImportRow(rawRow) {
+  const entries = Object.entries(rawRow).map(([k, v]) => [normalizeHeader(k), v]);
+  function find(aliases) {
+    for (const [k, v] of entries) {
+      if (aliases.includes(k) && String(v).trim() !== '') return v;
+    }
+    return undefined;
+  }
+  const empresa = find(['empresa', 'nome', 'nome da empresa', 'nome fantasia', 'razao social']);
+  if (!empresa) return null;
+  const telefone = find(['telefone', 'celular', 'whatsapp', 'fone']);
+  return {
+    empresa: String(empresa).trim(),
+    razao_social: String(find(['razao social']) || empresa).trim(),
+    nome_fantasia: String(empresa).trim(),
+    cnpj: String(find(['cnpj']) || '').trim(),
+    segmento: String(find(['segmento']) || '').trim(),
+    contato: String(find(['contato', 'nome do contato']) || '').trim(),
+    telefone: String(telefone || '').trim(),
+    whatsapp: String(find(['whatsapp']) || telefone || '').trim(),
+    email: String(find(['email', 'e-mail']) || '').trim(),
+    cidade: String(find(['cidade']) || '').trim(),
+    estado: String(find(['estado', 'uf']) || '').trim(),
+    vendedor: String(find(['vendedor', 'responsavel']) || '').trim(),
+    status: String(find(['status']) || 'Prospect').trim() || 'Prospect',
+    etapa: String(find(['etapa']) || 'Lead').trim() || 'Lead',
+    modal: 'Rodoviário',
+    valor_potencial: Number(find(['valor potencial', 'valor'])) || 0,
+    probabilidade: 30,
+    proxima_acao: String(find(['proxima acao', 'proximo passo']) || '').trim(),
+    timeline: [],
+  };
 }
 
 function ConfigMissingScreen() {
@@ -283,6 +324,18 @@ function CRMDashboard({ session }) {
     setClients(prev => prev.some(c => c.id === data.id) ? prev : [...prev, rowToClient(data)]);
     return data.id;
   }
+  // Insere várias linhas de uma vez (usado na importação de planilha).
+  // Retorna { inserted, error }.
+  async function importClients(rows) {
+    if (!rows.length) return { inserted: 0, error: null };
+    const { data, error } = await supabase.from('clients').insert(rows).select();
+    if (error) {
+      console.error('Falha ao importar planilha:', error.message);
+      return { inserted: 0, error };
+    }
+    setClients(prev => [...prev, ...data.map(rowToClient)]);
+    return { inserted: data.length, error: null };
+  }
   async function deleteClient(id) {
     const anterior = clients;
     setClients(prev => prev.filter(c => c.id !== id));
@@ -426,7 +479,7 @@ function CRMDashboard({ session }) {
           <div style={{ padding: 28 }}>
             {view === 'dashboard' && <Dashboard kpis={kpis} segChartData={segChartData} stageChartData={stageChartData} vendedorData={vendedorData} alerts={alerts} openClient={openClient} setView={setView} />}
             {view === 'funil' && <Funil clients={filtered} updateClient={updateClient} openClient={openClient} search={search} setSearch={setSearch} />}
-            {view === 'clientes' && <ClienteLista clients={filtered} openClient={openClient} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterSegmento={filterSegmento} setFilterSegmento={setFilterSegmento} segmentos={segmentos} total={clients.length} addClient={addClient} />}
+            {view === 'clientes' && <ClienteLista clients={filtered} openClient={openClient} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterSegmento={filterSegmento} setFilterSegmento={setFilterSegmento} segmentos={segmentos} total={clients.length} addClient={addClient} importClients={importClients} />}
             {view === 'detalhe' && selected && <ClienteDetalhe client={selected} updateClient={updateClient} addTimelineEntry={addTimelineEntry} setView={setView} deleteClient={deleteClient} />}
             {view === 'followup' && <FollowUp alerts={alerts} openClient={openClient} clients={clients} />}
           </div>
@@ -607,9 +660,11 @@ function Funil({ clients, updateClient, openClient }) {
   );
 }
 
-function ClienteLista({ clients, openClient, filterStatus, setFilterStatus, filterSegmento, setFilterSegmento, segmentos, total, addClient }) {
+function ClienteLista({ clients, openClient, filterStatus, setFilterStatus, filterSegmento, setFilterSegmento, segmentos, total, addClient, importClients }) {
   const [novaEmpresa, setNovaEmpresa] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   async function handleAdd() {
     if (!novaEmpresa.trim() || salvando) return;
@@ -617,6 +672,31 @@ function ClienteLista({ clients, openClient, filterStatus, setFilterStatus, filt
     const id = await addClient(novaEmpresa.trim());
     setSalvando(false);
     if (id != null) { setNovaEmpresa(''); openClient(id); }
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files[0];
+    e.target.value = ''; // permite escolher o mesmo arquivo de novo depois
+    if (!file) return;
+    setImportando(true);
+    setImportResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const mapped = rawRows.map(mapImportRow).filter(Boolean);
+      if (!mapped.length) {
+        setImportResult({ ok: false, msg: 'Nenhuma linha válida encontrada. A planilha precisa ter uma coluna "Empresa" (ou "Nome") preenchida.' });
+      } else {
+        const { inserted, error } = await importClients(mapped);
+        if (error) setImportResult({ ok: false, msg: 'Erro ao salvar no banco. Tente novamente em instantes.' });
+        else setImportResult({ ok: true, msg: `${inserted} de ${rawRows.length} linha(s) importada(s) com sucesso.` });
+      }
+    } catch (err) {
+      setImportResult({ ok: false, msg: 'Não foi possível ler o arquivo. Confirme que é um .xlsx, .xls ou .csv válido.' });
+    }
+    setImportando(false);
   }
 
   return (
@@ -636,7 +716,7 @@ function ClienteLista({ clients, openClient, filterStatus, setFilterStatus, filt
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={novaEmpresa} onChange={e => setNovaEmpresa(e.target.value)} placeholder="Nome da nova empresa..."
           style={{ flex: '0 1 320px', padding: '8px 10px', borderRadius: 7, border: '1px solid #E5E7EB', fontSize: 12.5 }}
           onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }} />
@@ -644,7 +724,19 @@ function ClienteLista({ clients, openClient, filterStatus, setFilterStatus, filt
           style={{ background: '#101828', color: '#fff', border: 'none', borderRadius: 7, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}>
           <Plus size={14} /> Nova Empresa
         </button>
+        <label style={{ background: '#fff', color: '#101828', border: '1px solid #E5E7EB', borderRadius: 7, padding: '8px 14px', cursor: importando ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, opacity: importando ? 0.6 : 1 }}>
+          <Upload size={14} /> {importando ? 'Importando...' : 'Importar Planilha'}
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportFile} disabled={importando} style={{ display: 'none' }} />
+        </label>
       </div>
+      {importResult && (
+        <div style={{
+          marginBottom: 14, fontSize: 12.5, padding: '8px 12px', borderRadius: 7,
+          background: importResult.ok ? '#EAF6EF' : '#FBEAE8', color: importResult.ok ? '#1C7C54' : '#B0463C',
+        }}>
+          {importResult.msg}
+        </div>
+      )}
 
       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #ECEDF0', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.2fr 1fr 1fr 1fr', padding: '10px 18px', fontSize: 11, fontWeight: 700, color: '#8C93A6', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid #ECEDF0' }}>
