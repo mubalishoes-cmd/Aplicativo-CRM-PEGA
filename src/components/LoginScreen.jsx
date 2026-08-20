@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Truck } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { colors, spacing, radius, fontSize } from '../lib/theme';
+
+// Mesma política de migração dos arquivos anteriores.
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -17,21 +20,21 @@ export default function LoginScreen() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#101828', fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <form onSubmit={handleLogin} style={{ background: '#fff', borderRadius: 14, padding: 32, width: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg,#F5A524,#E8871E)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Truck size={18} color="#101828" />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.brandNavy, fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <form onSubmit={handleLogin} style={{ background: colors.bgSurface, borderRadius: 14, padding: 32, width: 320, display: 'flex', flexDirection: 'column', gap: spacing.md }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: spacing.sm }}>
+          <div style={{ width: 34, height: 34, borderRadius: radius.sm, background: `linear-gradient(135deg,${colors.brandOrange},${colors.brandOrangeDark})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Truck size={18} color={colors.brandNavy} />
           </div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>ROTA CRM</div>
+          <div style={{ fontWeight: 700, fontSize: fontSize.lg }}>ROTA CRM</div>
         </div>
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="E-mail" type="email" required
-          style={{ padding: '9px 11px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13.5 }} />
+          style={{ padding: '9px 11px', borderRadius: radius.sm, border: `1px solid ${colors.border}`, fontSize: fontSize.base }} />
         <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" type="password" required
-          style={{ padding: '9px 11px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13.5 }} />
-        {error && <div style={{ fontSize: 12, color: '#B0463C' }}>{error}</div>}
+          style={{ padding: '9px 11px', borderRadius: radius.sm, border: `1px solid ${colors.border}`, fontSize: fontSize.base }} />
+        {error && <div style={{ fontSize: 12, color: colors.danger }}>{error}</div>}
         <button type="submit" disabled={loading}
-          style={{ background: '#101828', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+          style={{ background: colors.brandNavy, color: colors.textOnDark, border: 'none', borderRadius: radius.sm, padding: '10px 0', fontSize: fontSize.base, fontWeight: 600, cursor: 'pointer' }}>
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
