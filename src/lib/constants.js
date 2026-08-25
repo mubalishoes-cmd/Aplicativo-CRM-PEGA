@@ -19,3 +19,6 @@ export const STATUS_COLOR = {
 
 // Estilo compartilhado dos selects de filtro (ClienteLista, ClienteDetalhe).
 export const selStyle = { padding: '7px 10px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12.5, background: '#fff', color: '#101828' };
+
+// Rótulo exibido para cada campo registrado no histórico de alterações (client_changes).
+export const CAMPO_LABEL = { etapa: 'Etapa', status: 'Status' };
