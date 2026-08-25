@@ -34,6 +34,16 @@ export function patchToRow(patch) {
   return row;
 }
 
+// Converte uma linha da tabela `client_changes` (histórico de alterações) para
+// o formato usado nas telas.
+export function rowToChange(r) {
+  return {
+    id: r.id, clientId: r.client_id, empresa: r.empresa, campo: r.campo,
+    valorAnterior: r.valor_anterior, valorNovo: r.valor_novo,
+    changedBy: r.changed_by, changedAt: r.changed_at,
+  };
+}
+
 // --- Importação de planilha (Excel/CSV) ---
 function normalizeHeader(s) {
   return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
