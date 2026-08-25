@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
   LayoutDashboard, GitBranch, Users, Search, Bell, Truck, X, AlertTriangle,
-  User, LogOut, Download,
+  User, LogOut, Download, History, RotateCcw,
 } from 'lucide-react';
 import { supabase, supabaseConfigured } from './lib/supabaseClient';
 import { STAGES } from './lib/constants';
-import { lastContactDate, daysSince } from './lib/format';
+import { lastContactDate, daysSince, describeChange } from './lib/format';
 import { exportClientsToExcel } from './lib/exportExcel';
 import { colors, spacing, radius, fontSize } from './lib/theme';
 import { useAuth } from './hooks/useAuth';
@@ -18,6 +18,7 @@ import Funil from './components/Funil';
 import ClienteLista from './components/ClienteLista';
 import ClienteDetalhe from './components/ClienteDetalhe';
 import FollowUp from './components/FollowUp';
+import Historico from './components/Historico';
 
 export default function CRMApp() {
   const { session, authLoading } = useAuth();
@@ -32,7 +33,8 @@ function CRMDashboard({ session }) {
   const {
     clients, loading: loadingClients, errorMsg, clearError,
     updateClient, addTimelineEntry, addClient, importClients, deleteClient,
-  } = useClients();
+    changes, undoing, undoLastChange,
+  } = useClients(session.user.email);
 
   const [view, setView] = useState('dashboard');
   const [selectedId, setSelectedId] = useState(null);
@@ -100,6 +102,7 @@ function CRMDashboard({ session }) {
     { key: 'funil', label: 'Funil Comercial', icon: GitBranch },
     { key: 'clientes', label: 'Clientes', icon: Users },
     { key: 'followup', label: 'Follow-up', icon: Bell, badge: alerts.length },
+    { key: 'historico', label: 'Histórico', icon: History },
   ];
 
   if (loadingClients) return <LoadingScreen label="Carregando carteira de clientes..." />;
@@ -177,6 +180,12 @@ function CRMDashboard({ session }) {
               />
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, alignItems: 'center' }}>
+              {changes.length > 0 && (
+                <button onClick={undoLastChange} disabled={undoing} title={describeChange(changes[0])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: colors.bgSubtle, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: radius.sm, padding: `${spacing.sm}px ${spacing.md}px`, fontSize: fontSize.sm, fontWeight: 600, cursor: undoing ? 'default' : 'pointer', opacity: undoing ? 0.6 : 1 }}>
+                  <RotateCcw size={14} /> {undoing ? 'Desfazendo...' : 'Desfazer'}
+                </button>
+              )}
               <button onClick={() => exportClientsToExcel(clients)}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, background: colors.brandNavy, color: colors.textOnDark, border: 'none', borderRadius: radius.sm, padding: `${spacing.sm}px ${spacing.md}px`, fontSize: fontSize.sm, fontWeight: 600, cursor: 'pointer' }}>
                 <Download size={14} /> Exportar Excel
@@ -191,6 +200,7 @@ function CRMDashboard({ session }) {
             {view === 'clientes' && <ClienteLista clients={filtered} openClient={openClient} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterSegmento={filterSegmento} setFilterSegmento={setFilterSegmento} segmentos={segmentos} total={clients.length} addClient={addClient} importClients={importClients} />}
             {view === 'detalhe' && selected && <ClienteDetalhe client={selected} updateClient={updateClient} addTimelineEntry={addTimelineEntry} setView={setView} deleteClient={deleteClient} />}
             {view === 'followup' && <FollowUp alerts={alerts} openClient={openClient} clients={clients} />}
+            {view === 'historico' && <Historico changes={changes} openClient={openClient} undoLastChange={undoLastChange} undoing={undoing} />}
           </div>
         </main>
       </div>
