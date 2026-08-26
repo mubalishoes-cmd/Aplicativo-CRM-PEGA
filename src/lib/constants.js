@@ -6,7 +6,7 @@ export const STAGES = [
   { key: 'Visita Agendada', label: 'Visita Agendada', color: '#3E7CB1', icon: '03', prazo: 7 },
   { key: 'Visita Realizada', label: 'Visita Realizada', color: '#4C9F70', icon: '04', prazo: 5 },
   { key: 'Cotação Enviada', label: 'Cotação Enviada', color: '#F5A524', icon: '05', prazo: 7 },
-  { key: 'Negociação', label: 'Negociação', color: '#E8871E', icon: '06', prazo: 10 },
+  { key: 'Negociação', label: 'Negociação', color: '#C60018', icon: '06', prazo: 10 },
   { key: 'Cliente Ativo', label: 'Cliente Ativo', color: '#1C7C54', icon: '07', prazo: 0 },
   { key: 'Perdido', label: 'Perdido', color: '#B0463C', icon: '08', prazo: 0 },
 ];
@@ -18,7 +18,9 @@ export const STATUS_COLOR = {
 };
 
 // Estilo compartilhado dos selects de filtro (ClienteLista, ClienteDetalhe).
-export const selStyle = { padding: '7px 10px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12.5, background: '#fff', color: '#101828' };
+// Cores em hex direto (não importam theme.js) — mantidas em sincronia manual
+// com colors.border e colors.textPrimary após o reskin Pega Entrega.
+export const selStyle = { padding: '7px 10px', borderRadius: 8, border: '1px solid #E6E4E2', fontSize: 12.5, background: '#fff', color: '#212121' };
 
 // Rótulo exibido para cada campo registrado no histórico de alterações (client_changes).
 export const CAMPO_LABEL = { etapa: 'Etapa', status: 'Status' };
