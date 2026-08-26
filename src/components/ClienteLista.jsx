@@ -96,7 +96,7 @@ export default function ClienteLista({ clients, openClient, filterStatus, setFil
             return (
               <div key={c.id} onClick={() => openClient(c.id)}
                 style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 1.2fr 1fr 1fr 1fr', padding: '11px 18px', fontSize: fontSize.sm, borderBottom: `1px solid ${colors.bgPage}`, cursor: 'pointer', alignItems: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#FAFAFB'}
+                onMouseEnter={e => e.currentTarget.style.background = '#FAFAF9'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ fontWeight: 700 }}>{c.empresa}</div>
                 <div style={{ color: colors.textSecondary }}>{c.segmento || '—'}</div>
