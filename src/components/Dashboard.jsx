@@ -29,7 +29,7 @@ function KpiCard({ label, value, sub, color, icon: Icon }) {
 export default function Dashboard({ kpis, segChartData, stageChartData, vendedorData, alerts, openClient, setView }) {
   // Paleta de gráficos: mantida como hex direto de propósito (mesma decisão do
   // theme.js de não duplicar as cores de STAGES/constants.js aqui).
-  const PALETTE = ['#2E5EAA','#F5A524','#1C7C54','#B0463C','#8C93A6','#3E7CB1','#E8871E','#4C9F70'];
+  const PALETTE = ['#E4001B','#F5A524','#1C7C54','#B0463C','#8C93A6','#3E7CB1','#2E5EAA','#4C9F70'];
   return (
     <div>
       <div style={{ marginBottom: 22 }}>
@@ -42,8 +42,8 @@ export default function Dashboard({ kpis, segChartData, stageChartData, vendedor
         <KpiCard label="Prospects" value={kpis.prospects} color={colors.info} icon={TrendingUp} sub="em prospecção ativa" />
         <KpiCard label="Perdidos" value={kpis.perdidos} color={colors.danger} icon={AlertTriangle} sub="oportunidades encerradas" />
         <KpiCard label="Cotações em aberto" value={kpis.cotacoes} color={colors.warning} icon={Briefcase} sub="aguardando decisão" />
-        <KpiCard label="Taxa de conversão" value={`${kpis.taxaConversao}%`} color={colors.textPrimary} icon={GitBranch} sub="lead → cliente ativo" />
-        <KpiCard label="Interações registradas" value={kpis.totalInteracoes} color={colors.textPrimary} icon={Phone} sub="ligações, visitas, e-mails" />
+        <KpiCard label="Taxa de conversão" value={`${kpis.taxaConversao}%`} color={colors.brandOrange} icon={GitBranch} sub="lead → cliente ativo" />
+        <KpiCard label="Interações registradas" value={kpis.totalInteracoes} color={colors.brandOrange} icon={Phone} sub="ligações, visitas, e-mails" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: spacing.lg, marginBottom: spacing.lg }}>
@@ -94,7 +94,7 @@ export default function Dashboard({ kpis, segChartData, stageChartData, vendedor
               <XAxis dataKey="name" tick={{ fontSize: fontSize.xs }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: fontSize.xs }} axisLine={false} tickLine={false} />
               <Tooltip />
-              <Bar dataKey="value" fill={colors.info} radius={[6,6,0,0]} />
+              <Bar dataKey="value" fill={colors.brandOrange} radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
