@@ -6,9 +6,11 @@ import { colors, spacing, radius, fontSize } from '../lib/theme';
 
 // Mesma política de migração dos arquivos anteriores: cor sempre trocada por
 // token; espaçamento/raio/fonte só trocados quando o valor bate exatamente.
-// O tom '#2B3648' (círculos/linhas inativas do trilho de etapas) não tem
-// token correspondente em theme.js e foi mantido como estava — é específico
-// desse componente (trilho sobre fundo escuro).
+// O tom '#3D3B3B' (círculos/linhas inativas do trilho de etapas) não tem
+// token correspondente em theme.js — é específico desse componente (trilho
+// sobre fundo escuro, colors.textPrimary). Atualizado no reskin Pega Entrega
+// para o mesmo chumbo usado em sidebarActiveBg (era '#2B3648', tom azulado
+// pensado para o fundo navy antigo — ficaria destoante sobre o chumbo novo).
 
 function Field({ label, value, onChange, type = 'text' }) {
   return (
@@ -90,7 +92,7 @@ export default function ClienteDetalhe({ client, updateClient, addTimelineEntry,
                 <div onClick={() => updateClient(client.id, { etapa: s.key })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0, width: 96 }}>
                   <div style={{
                     width: current ? 30 : 22, height: current ? 30 : 22, borderRadius: '50%',
-                    background: active ? s.color : '#2B3648', border: current ? `3px solid ${colors.bgSurface}` : 'none',
+                    background: active ? s.color : '#3D3B3B', border: current ? `3px solid ${colors.bgSurface}` : 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
                     boxShadow: current ? `0 0 0 4px ${s.color}44` : 'none'
                   }}>
@@ -98,7 +100,7 @@ export default function ClienteDetalhe({ client, updateClient, addTimelineEntry,
                   </div>
                   <div style={{ fontSize: 10, color: active ? colors.bgSurface : colors.textSecondary, marginTop: 6, textAlign: 'center', fontWeight: current ? 700 : 500 }}>{s.label}</div>
                 </div>
-                {i < arr.length - 1 && <div style={{ flex: 1, height: 2, background: i < stageIdx ? s.color : '#2B3648', minWidth: 20, marginTop: -18 }} />}
+                {i < arr.length - 1 && <div style={{ flex: 1, height: 2, background: i < stageIdx ? s.color : '#3D3B3B', minWidth: 20, marginTop: -18 }} />}
               </React.Fragment>
             );
           })}
