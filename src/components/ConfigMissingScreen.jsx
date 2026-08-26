@@ -1,10 +1,10 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { colors, fontSize } from '../lib/theme';
+import { colors, fontSize, fontFamily } from '../lib/theme';
 
 export default function ConfigMissingScreen() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.brandNavy, fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.brandNavy, fontFamily: fontFamily.body }}>
       <div style={{ background: colors.bgSurface, borderRadius: 14, padding: 32, width: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <AlertTriangle size={20} color={colors.danger} />
