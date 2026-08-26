@@ -1,28 +1,27 @@
 // Tokens de design do Rota CRM: cores, espaçamento, raio de borda e tipografia
-// usados em todo o app. Hoje esses valores estão espalhados como hex soltos em
-// cada componente (Dashboard.jsx, Funil.jsx, ClienteLista.jsx, ClienteDetalhe.jsx,
-// App.jsx...) — este arquivo reúne os mesmos valores num só lugar para que,
-// daqui pra frente, novas telas (e a migração das telas existentes) usem essas
-// constantes em vez de repetir hex codes.
+// usados em todo o app. Como todos os componentes já importam essas constantes
+// em vez de repetir hex codes, trocar um valor aqui atualiza o app inteiro.
 //
-// Este arquivo só ADICIONA os tokens — nenhum componente foi alterado para
-// usá-los ainda, então criar este arquivo não muda nada visualmente no app.
-// A migração dos componentes é o próximo passo, feita aos poucos.
+// Paleta alinhada à identidade visual da Pega Entrega (pegaentrega.com.br):
+// vermelho como cor de marca/ação, cinza-chumbo no lugar do azul-marinho nas
+// áreas escuras, tipografia Manrope. As cores semânticas de status (verde/azul/
+// laranja/vermelho-perdido) foram mantidas de propósito — são convenções de
+// leitura (sucesso/alerta/erro) e não fazem parte da identidade da marca.
 
 export const colors = {
   // Marca
-  brandNavy: '#101828',      // cor de texto principal, fundo da sidebar, botões primários
-  brandOrange: '#F5A524',    // laranja da marca (logo, destaques, CTA)
-  brandOrangeDark: '#E8871E',// usado no gradiente do logo junto com brandOrange
+  brandNavy: '#212121',      // cor de texto principal, fundo de telas de login/config, botões primários
+  brandOrange: '#E4001B',    // vermelho da marca (logo, destaques, CTA) — nome do token mantido para não quebrar imports
+  brandOrangeDark: '#C60018',// usado no gradiente do logo e em botões, junto com brandOrange
 
   // Texto
-  textPrimary: '#101828',
-  textSecondary: '#5B6472',
-  textMuted: '#8C93A6',
+  textPrimary: '#212121',
+  textSecondary: '#5C5C5C',
+  textMuted: '#8C8C8C',
   textOnDark: '#fff',
-  textOnDarkMuted: '#A6ADBB',
+  textOnDarkMuted: '#BFBFBF',
 
-  // Semânticas (status, alertas)
+  // Semânticas (status, alertas) — mantidas: convenção de leitura, não identidade de marca
   success: '#1C7C54',   // Ativo
   info: '#2E5EAA',      // Prospect / links / foco
   warning: '#F5A524',   // Cotação em aberto / Recuperado
@@ -31,18 +30,18 @@ export const colors = {
   dangerBg: '#FBEAE8',
 
   // Neutros / superfícies
-  bgPage: '#F5F6F8',
+  bgPage: '#F7F6F5',
   bgSurface: '#fff',
-  bgSubtle: '#F0F1F3',      // fundo das colunas do Kanban
-  border: '#E5E7EB',        // inputs, selects
-  borderCard: '#ECEDF0',    // bordas de cards
-  scrollbarThumb: '#D3D7DE',
-  emptyStateText: '#B4B9C2',
+  bgSubtle: '#F1F0EF',      // fundo das colunas do Kanban
+  border: '#E6E4E2',        // inputs, selects
+  borderCard: '#ECEAE8',    // bordas de cards
+  scrollbarThumb: '#D6D3D0',
+  emptyStateText: '#B8B5B2',
 
   // Sidebar (fundo escuro)
-  sidebarBg: '#101828',
-  sidebarActiveBg: '#1E293B',
-  sidebarBorder: '#1F2937',
+  sidebarBg: '#2B2A2A',
+  sidebarActiveBg: '#3D3B3B',
+  sidebarBorder: '#403E3E',
 };
 
 // Escala de espaçamento (px). Cobre os valores já usados no app — ao criar
@@ -76,14 +75,14 @@ export const fontSize = {
 };
 
 export const fontFamily = {
-  display: "'Space Grotesk', sans-serif", // títulos
-  body: "'Inter', system-ui, sans-serif", // texto padrão
+  display: "'Manrope', sans-serif",       // títulos
+  body: "'Manrope', system-ui, sans-serif", // texto padrão
   mono: "'JetBrains Mono', monospace",    // códigos de etapa, valores técnicos
 };
 
 export const shadow = {
-  cardHover: '0 8px 20px rgba(16,24,40,0.08)',
-  cardSubtle: '0 1px 2px rgba(16,24,40,0.04)',
+  cardHover: '0 8px 20px rgba(20,18,18,0.08)',
+  cardSubtle: '0 1px 2px rgba(20,18,18,0.04)',
 };
 
 // As cores por etapa do funil (STAGES) e por status (STATUS_COLOR) já vivem
